@@ -1,4 +1,4 @@
-import gym
+import os
 import numpy as np
 import logging
 
@@ -13,6 +13,9 @@ from common.agents.ddpg.replay_buffer import ReplayBuffer
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logger = logging.getLogger(__name__)
+
+PARA_LOG = './results/simulator_instances/'
+os.makedirs(PARA_LOG ,exist_ok=True )
 
 
 class SVPGSimulatorAgent(object):
@@ -147,6 +150,14 @@ class SVPGSimulatorAgent(object):
             simulation_instances = np.ones((self.nagents,
                                             self.svpg.svpg_rollout_length,
                                             self.svpg.nparams)) * -1
+            small_ranges = np.linspace( 0 ,1 ,self.nagents + 1 )
+            for i in range( self.nagents ):
+                miu = (small_ranges[i] + small_ranges[i + 1]) / 2
+                sigma = (small_ranges[0 + 1] + small_ranges[0]) / 6
+                row = np.random.normal( miu ,sigma ,(self.svpg.svpg_rollout_length ,self.nparams) )
+                row[row < 0] = 0
+                row[row > 1] = 1
+                simulation_instances[i] = row
 
         assert (self.nagents, self.svpg.svpg_rollout_length, self.svpg.nparams) == simulation_instances.shape
 
@@ -165,6 +176,8 @@ class SVPGSimulatorAgent(object):
 
         # Reshape to work with vectorized environments
         simulation_instances = np.transpose(simulation_instances, (1, 0, 2))
+        log_path = os.path.join( PARA_LOG ,'parameter_log_{}'.format( self.svpg_timesteps ) )
+        log_file = open( log_path ,'w' ,1 )
 
         # Create environment instances with vectorized env, and rollout agent_policy in both
         for t in range(self.svpg.svpg_rollout_length):
@@ -174,6 +187,9 @@ class SVPGSimulatorAgent(object):
             reference_trajectory = self.rollout_agent(agent_policy)
 
             self.randomized_env.randomize(randomized_values=simulation_instances[t])
+            env_params = self.randomized_env.get_current_params()
+            log_file.write( ' '.join( [str( val ) for val in env_params[: ,0]] ) + '\n' )
+
             randomized_trajectory = self.rollout_agent(agent_policy, reference=False)
 
             for i in range(self.nagents):
