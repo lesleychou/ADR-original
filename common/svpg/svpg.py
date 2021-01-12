@@ -100,6 +100,7 @@ class SVPG:
         return Kxx, dxKxx
 
     def select_action(self, policy_idx, state):
+        # TODO: How does this work???
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
         policy = self.particles[policy_idx]
         prior_policy = self.prior_particles[policy_idx]
@@ -151,13 +152,17 @@ class SVPG:
                 action, value = self.select_action(i, current_sim_params)  
                 self.values[i][t] = value
                 
-                action = self._process_action(action)          
-                clipped_action = action * self.max_step_length
+                action = self._process_action(action)
+                clipped_action = action * self.max_step_length # length = 0.05
+                # TODO: why current_sim_params + clipped_action?
                 next_params = np.clip(current_sim_params + clipped_action, 0, 1)
 
+                print(current_sim_params, "-----current_sim_params")
+                print(next_params, "------next_params")
+                # TODO: for non-ADR, should the svpg_horizon be 25?
                 if np.array_equal(next_params, current_sim_params) or self.timesteps[i] + 1 == self.svpg_horizon:
                     next_params = np.random.uniform(0, 1, (self.nparams,))
-                    
+                    print('go into here~~~~~~')
                     self.masks[i][t] = 0 # done = True
                     self.timesteps[i] = 0
 
@@ -165,7 +170,8 @@ class SVPG:
                 self.timesteps[i] += 1
 
             self.last_states[i] = current_sim_params
-            print(self.last_states[i], "-------self.last_states[i]-step()")
+        # print(self.simulation_instances, "-------self.simulation_instances")
+        # print(self.last_states, "-------self.last_states")
 
         return np.array(self.simulation_instances)
 
@@ -179,14 +185,16 @@ class SVPG:
             policy_grad_particle = []
             
             # Calculate the value of last state - for Return Computation
-            print(self.last_states[i], "----------------self.last_states[i]")
+            # TODO: what is self.last_states?
+            #  start with random value in [0, 1], it represents last_SVPG_output
+            #print(self.last_states[i], "----------------self.last_states[i]")
 
             _, next_value = self.select_action(i, self.last_states[i]) 
-            print(next_value, "----------------next_value")
+            #print(next_value, "----------------next_value")
 
             particle_rewards = torch.from_numpy(simulator_rewards[i]).float().to(device)
             masks = torch.from_numpy(self.masks[i]).float().to(device)
-            print(masks, "----------------masks")
+            #print(masks, "----------------masks")
             
             # Calculate entropy-augmented returns, advantages
             returns = self.compute_returns(next_value, particle_rewards, masks, self.particles[i].saved_klds)
