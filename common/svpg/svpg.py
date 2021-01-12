@@ -165,6 +165,7 @@ class SVPG:
                 self.timesteps[i] += 1
 
             self.last_states[i] = current_sim_params
+            print(self.last_states[i], "-------self.last_states[i]-step()")
 
         return np.array(self.simulation_instances)
 
@@ -178,10 +179,14 @@ class SVPG:
             policy_grad_particle = []
             
             # Calculate the value of last state - for Return Computation
+            print(self.last_states[i], "----------------self.last_states[i]")
+
             _, next_value = self.select_action(i, self.last_states[i]) 
+            print(next_value, "----------------next_value")
 
             particle_rewards = torch.from_numpy(simulator_rewards[i]).float().to(device)
             masks = torch.from_numpy(self.masks[i]).float().to(device)
+            print(masks, "----------------masks")
             
             # Calculate entropy-augmented returns, advantages
             returns = self.compute_returns(next_value, particle_rewards, masks, self.particles[i].saved_klds)

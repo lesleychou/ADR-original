@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 PARA_LOG = './results/simulator_instances/'
 os.makedirs(PARA_LOG ,exist_ok=True )
+rl_path = os.path.join( PARA_LOG ,'PARA_log' )
+rl_file = open( rl_path ,'a' ,1 )
 
 
 class SVPGSimulatorAgent(object):
@@ -141,6 +143,8 @@ class SVPGSimulatorAgent(object):
         if self.svpg_timesteps >= self.initial_svpg_steps:
             # Get sim instances from SVPG policy
             simulation_instances = self.svpg.step()
+            print(simulation_instances, "--------simulation_instances output")
+            rl_file.write( 'current_SVPG_output:' + '\t' + str(simulation_instances) + '\n' )
 
             index = self.svpg_timesteps % self.svpg_horizon
             self.simulation_instances_full_horizon[:, index, :, :] = simulation_instances
@@ -232,6 +236,10 @@ class SVPGSimulatorAgent(object):
         # Calculate discriminator based reward, pass it back to SVPG policy
         if self.svpg_timesteps >= self.initial_svpg_steps:
             if self.train_svpg:
+                rewards = np.ones(rewards.shape)
+                rewards[0][0] = float(-10)
+                print(rewards, "-------rewards")
+                rl_file.write( 'svpg_input_reward:' + '\t' + str(rewards) + '\n' )
                 self.svpg.train(rewards)
 
             for dimension in range(self.nparams):
