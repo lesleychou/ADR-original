@@ -101,15 +101,30 @@ class SVPG:
 
     def select_action(self, policy_idx, state):
         # TODO: How does this work???
-        state = torch.from_numpy(state).float().unsqueeze(0).to(device)
+        # for i in range(10):
+        #     state = np.array( [[float(i/10)]] )
+        #     state = torch.from_numpy(state).float().unsqueeze(0).to(device)
+        #     policy = self.particles[policy_idx]
+        #     prior_policy = self.prior_particles[policy_idx]
+        #     dist, value = policy(state)
+        #     print(state, "-----state")
+        #     print(dist, "-------dist")
+        #     prior_dist, _ = prior_policy(state)
+        #     print(prior_dist, "-------prior-dist")
+
+        state = torch.from_numpy( state ).float().unsqueeze( 0 ).to( device )
         policy = self.particles[policy_idx]
         prior_policy = self.prior_particles[policy_idx]
-        dist, value = policy(state)
-        prior_dist, _ = prior_policy(state)
+        # state: input reward
+        # value: quality value from critic
+        dist ,value = policy( state )
+        prior_dist ,_ = prior_policy( state )
 
         action = dist.sample()               
-            
+
+        # log of the pdf/pmf evaluated at "action"
         policy.saved_log_probs.append(dist.log_prob(action))
+        # self.particles[i].saved_klds is kl_ds for dist and prior_dist
         policy.saved_klds.append(kl_divergence(dist, prior_dist))
         
         # TODO: Gross temporary hack
@@ -118,16 +133,34 @@ class SVPG:
         else:
             action = action.squeeze().cpu().detach().numpy()
 
+        # TODO: what is action, what is value?
         return action, value
 
     def compute_returns(self, next_value, rewards, masks, klds):
-        R = next_value 
+        # TODO: in toy example, the return seems only slightly different or same with rewards.
+        #  Is this true in ADR? Is the klds messed up?
+        '''
+        A better A2C with Proper Entropy Bonuses
+        :param next_value: _, next_value = self.select_action(i, self.last_states[i])
+        :param rewards: particle_rewards
+        :param masks:
+        :param klds: self.particles[i].saved_klds, kl_ds for dist and prior_dist
+        (from different policy),based on the same state
+        :return: the array of reversed R
+        '''
+        R = next_value
         returns = []
         for step in reversed(range(len(rewards))):
             # Eq. 80: https://arxiv.org/abs/1704.06440
+            # an A2C proper policy gradient estimators
+            # 0/1 * R + (particle_reward - klds of dist and prion_dist)
+            # self.kld_coefficient = 0.0
             R = self.gamma * masks[step] * R + (rewards[step] - self.kld_coefficient * klds[step])
             returns.insert(0, R)
 
+        # tensor([[-44.]]) -----after R
+        # tensor([[-87.5600]]) -----after R
+        # [tensor([[-87.5600]]), tensor([[-44.]]] ----returns
         return returns
 
     def step(self):
@@ -145,32 +178,37 @@ class SVPG:
         for i in range(self.nagents):
             self.particles[i].reset()
             current_sim_params = self.last_states[i]
+            print(current_sim_params, "--------current_sim_param")
 
             for t in range(self.svpg_rollout_length):
                 self.simulation_instances[i][t] = current_sim_params
+                action, value = self.select_action(i, current_sim_params)
 
-                action, value = self.select_action(i, current_sim_params)  
                 self.values[i][t] = value
-                
-                action = self._process_action(action)
                 clipped_action = action * self.max_step_length # length = 0.05
-                # TODO: why current_sim_params + clipped_action?
+                # TODO: action is relative action, clipped by [0,1].
+                #  so we have a lot of 0/1 output. does this make sense?
+                # print(current_sim_params, "---current_sim_params")
+                # print(current_sim_params + clipped_action, "-----before clip")
                 next_params = np.clip(current_sim_params + clipped_action, 0, 1)
 
-                print(current_sim_params, "-----current_sim_params")
                 print(next_params, "------next_params")
                 # TODO: for non-ADR, should the svpg_horizon be 25?
                 if np.array_equal(next_params, current_sim_params) or self.timesteps[i] + 1 == self.svpg_horizon:
                     next_params = np.random.uniform(0, 1, (self.nparams,))
-                    print('go into here~~~~~~')
+                    print(next_params, "-----if same, random next_params")
+                    # TODO: why when "next_params==current_sim_params", masks is done?
                     self.masks[i][t] = 0 # done = True
                     self.timesteps[i] = 0
 
                 current_sim_params = next_params
+                #self.simulation_instances[i][t] = current_sim_params
+
                 self.timesteps[i] += 1
 
             self.last_states[i] = current_sim_params
-        # print(self.simulation_instances, "-------self.simulation_instances")
+        print( self.masks ,"-----masks" )
+        print(self.simulation_instances, "-------step output simulation_instances")
         # print(self.last_states, "-------self.last_states")
 
         return np.array(self.simulation_instances)
@@ -183,29 +221,33 @@ class SVPG:
 
         for i in range(self.nagents):
             policy_grad_particle = []
-            
             # Calculate the value of last state - for Return Computation
             # TODO: what is self.last_states?
             #  start with random value in [0, 1], it represents last_SVPG_output
-            #print(self.last_states[i], "----------------self.last_states[i]")
 
-            _, next_value = self.select_action(i, self.last_states[i]) 
-            #print(next_value, "----------------next_value")
+            _, next_value = self.select_action(i, self.last_states[i])
 
             particle_rewards = torch.from_numpy(simulator_rewards[i]).float().to(device)
             masks = torch.from_numpy(self.masks[i]).float().to(device)
-            #print(masks, "----------------masks")
-            
+
             # Calculate entropy-augmented returns, advantages
             returns = self.compute_returns(next_value, particle_rewards, masks, self.particles[i].saved_klds)
+            #print(returns, "----------------returns")
+
             returns = torch.cat(returns).detach()
+
+            # advantages = Q(S,a) - V(s): another version of Q-value with lower variance
             advantages = returns - self.values[i]
-            # for s, v, r in zip(self.simulation_instances[i], self.values[i], simulator_rewards[i]):
-            #     print('Setting: {}, Reward: {}, Value: {}'.format(s,r,v))
+            #print(advantages, "----------------advantages")
+
 
             # logprob * A = policy gradient (before backwards)
+            # dist.log_prob(action) from the def select_action()
             for log_prob, advantage in zip(self.particles[i].saved_log_probs, advantages):
                 policy_grad_particle.append(log_prob * advantage.detach())
+                #print( log_prob ,"----------------log_prob" )
+
+            #print( policy_grad_particle ,"----------------policy_grad_particle" )
 
             # Compute value loss, update critic
             self.optimizers[i].zero_grad()
@@ -219,22 +261,23 @@ class SVPG:
             policy_grad.backward()
 
             # Vectorize parameters and PGs
+            # TODO: why to do this here?
             vec_param, vec_policy_grad = parameters_to_vector(
                 self.particles[i].parameters(), both=True)
-
+            # make the 1-dim vector into a length=1 2-dim vector
             policy_grads.append(vec_policy_grad.unsqueeze(0))
             parameters.append(vec_param.unsqueeze(0))
 
         # calculating the kernel matrix and its gradients
         parameters = torch.cat(parameters)
         Kxx, dxKxx = self._Kxx_dxKxx(parameters)
-
         policy_grads = 1 / self.temperature * torch.cat(policy_grads)
+
         grad_logp = torch.mm(Kxx, policy_grads)
-
         grad_theta = (grad_logp + dxKxx) / self.nagents
-        # explicitly deleting variables does not release memory :(
 
+        # explicitly deleting variables does not release memory :(
+        #print(grad_theta, "------grad_theta")
         # update param gradients
         for i in range(self.nagents):
             vector_to_parameters(grad_theta[i],

@@ -17,15 +17,16 @@ def _rescale( value):
 
 nagents=2
 nparams=1
-svpg_rollout_length=2
-SVPG_train_steps=1000
+svpg_rollout_length=5
+SVPG_train_steps=500
 
-svpg = SVPG(nagents=2 ,
-            nparams=1 ,
+svpg = SVPG(nagents=nagents ,
+            nparams=nparams ,
             max_step_length=5 ,
-            svpg_rollout_length=2 ,
+            svpg_rollout_length=svpg_rollout_length ,
             svpg_horizon=25 ,
-            temperature=2.0 ,
+            # change temperature seems have no effect
+            temperature=10.0 ,
             discrete=False ,
             kld_coefficient=0.0 )
 
@@ -33,25 +34,26 @@ svpg_rewards = np.ones((nagents, svpg_rollout_length, nparams))
 new_svpg_rewards = np.ones((nagents, svpg_rollout_length, nparams))
 
 all_params=[]
+simulation_instances = svpg.step()
 
 for i in range(SVPG_train_steps):
     if i < SVPG_train_steps:
-        simulation_instances = svpg.step()
-
+        #print(simulation_instances, "-------simulation_instances")
         for t in range(svpg_rollout_length):
             for i in range(nagents):
-                rewrd = svpg_rewards[i][t] - 45
-                if rewrd <= 0:
-                    new_svpg_rewards[i][t] = rewrd
+                rewrd = svpg_rewards[i][t] - 40
+                if -2 <= rewrd <= 2:
+                    new_svpg_rewards[i][t] = -10000
                 else:
-                    new_svpg_rewards[i][t] = -rewrd
+                    new_svpg_rewards[i][t] = rewrd
 
-        #print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
+        #new_svpg_rewards=np.array([[[0]], [[1]]])
+        print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
         svpg.train(simulator_rewards=new_svpg_rewards)
 
-        #new_simulation_instances = svpg.step()
+        simulation_instances = svpg.step()
         new_paras = _rescale(simulation_instances)
-        #print(new_paras, "----------new_paras")
+        print(new_paras, "----------new_paras")
         svpg_rewards = new_paras
 
         all_params.append(list(new_paras.flatten()))
