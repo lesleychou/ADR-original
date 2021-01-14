@@ -178,7 +178,6 @@ class SVPG:
         for i in range(self.nagents):
             self.particles[i].reset()
             current_sim_params = self.last_states[i]
-            print(current_sim_params, "--------current_sim_param")
 
             for t in range(self.svpg_rollout_length):
                 self.simulation_instances[i][t] = current_sim_params
@@ -189,27 +188,21 @@ class SVPG:
                 # TODO: action is relative action, clipped by [0,1].
                 #  so we have a lot of 0/1 output. does this make sense?
                 # print(current_sim_params, "---current_sim_params")
-                # print(current_sim_params + clipped_action, "-----before clip")
+                print(clipped_action, "---------------------------------------------clipped_action")
                 next_params = np.clip(current_sim_params + clipped_action, 0, 1)
-
-                print(next_params, "------next_params")
+                print(next_params, "--------------------------------------------------next_params")
                 # TODO: for non-ADR, should the svpg_horizon be 25?
                 if np.array_equal(next_params, current_sim_params) or self.timesteps[i] + 1 == self.svpg_horizon:
                     next_params = np.random.uniform(0, 1, (self.nparams,))
-                    print(next_params, "-----if same, random next_params")
                     # TODO: why when "next_params==current_sim_params", masks is done?
                     self.masks[i][t] = 0 # done = True
                     self.timesteps[i] = 0
 
                 current_sim_params = next_params
                 #self.simulation_instances[i][t] = current_sim_params
-
                 self.timesteps[i] += 1
 
             self.last_states[i] = current_sim_params
-        print( self.masks ,"-----masks" )
-        print(self.simulation_instances, "-------step output simulation_instances")
-        # print(self.last_states, "-------self.last_states")
 
         return np.array(self.simulation_instances)
 
@@ -238,7 +231,6 @@ class SVPG:
 
             # advantages = Q(S,a) - V(s): another version of Q-value with lower variance
             advantages = returns - self.values[i]
-            #print(advantages, "----------------advantages")
 
 
             # logprob * A = policy gradient (before backwards)

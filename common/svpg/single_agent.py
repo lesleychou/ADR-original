@@ -17,8 +17,8 @@ def _rescale( value):
 
 nagents=2
 nparams=1
-svpg_rollout_length=5
-SVPG_train_steps=500
+svpg_rollout_length=2
+SVPG_train_steps=200
 
 svpg = SVPG(nagents=nagents ,
             nparams=nparams ,
@@ -30,31 +30,42 @@ svpg = SVPG(nagents=nagents ,
             discrete=False ,
             kld_coefficient=0.0 )
 
-svpg_rewards = np.ones((nagents, svpg_rollout_length, nparams))
-new_svpg_rewards = np.ones((nagents, svpg_rollout_length, nparams))
+#svpg_rewards = np.ones((nagents, 1, nparams))
+#print(svpg_rewards)
+new_svpg_rewards = np.ones((nagents, 1, nparams))
 
 all_params=[]
-simulation_instances = svpg.step()
+current_paras = svpg.step()
+current_paras = np.ones((nagents,svpg.svpg_rollout_length,svpg.nparams)) * -1
+print(current_paras, "------------current_paras intial")
 
 for i in range(SVPG_train_steps):
     if i < SVPG_train_steps:
-        #print(simulation_instances, "-------simulation_instances")
-        for t in range(svpg_rollout_length):
-            for i in range(nagents):
-                rewrd = svpg_rewards[i][t] - 40
-                if -2 <= rewrd <= 2:
-                    new_svpg_rewards[i][t] = -10000
+        for t in range( svpg_rollout_length ):
+            for x in range(nagents):
+                #print(new_svpg_rewards[x], "----new_svpg_rewards[x]")
+                diff = current_paras[x][t] - 30
+                #print(diff, "----diff")
+                # TODO: the reward logic still have problem:
+                #  if the reward is low, output this parameter more,
+                #  and next time increase the reward a little bit, because it "trained more on this parameter".
+                if -10 <= diff <= 10:
+                    #print("----here")
+                    new_svpg_rewards[x][0][0] += 100
                 else:
-                    new_svpg_rewards[i][t] = rewrd
+                    #print("----else")
+                    new_svpg_rewards[x][0][0] += 0
 
         #new_svpg_rewards=np.array([[[0]], [[1]]])
-        print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
+        #print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
         svpg.train(simulator_rewards=new_svpg_rewards)
 
+        print(current_paras, "----------input paras")
         simulation_instances = svpg.step()
         new_paras = _rescale(simulation_instances)
-        print(new_paras, "----------new_paras")
-        svpg_rewards = new_paras
+        print(new_paras, "----------output new_paras")
+        current_paras = new_paras
+        new_svpg_rewards = new_svpg_rewards
 
         all_params.append(list(new_paras.flatten()))
 
@@ -67,3 +78,8 @@ plt.ylabel( 'SVPG output' )
 plt.xlabel( 'SVPG timestamps' )
 plt.title( 'SVPG output parameter changing' )
 plt.show()
+
+
+
+
+
