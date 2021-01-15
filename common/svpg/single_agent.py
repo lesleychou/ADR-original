@@ -4,6 +4,9 @@ sys.path.append("/Users/lesley/ADR-original")
 import numpy as np
 from common.svpg.svpg import SVPG
 import matplotlib.pyplot as plt
+from functools import reduce
+import operator
+
 
 plt.rcParams.update( {'font.size': 14} )
 
@@ -18,13 +21,13 @@ def _rescale( value):
 nagents=2
 nparams=1
 svpg_rollout_length=2
-SVPG_train_steps=200
+SVPG_train_steps=2000
 
 svpg = SVPG(nagents=nagents ,
             nparams=nparams ,
-            max_step_length=5 ,
+            max_step_length=0.05,
             svpg_rollout_length=svpg_rollout_length ,
-            svpg_horizon=25 ,
+            svpg_horizon=1000 ,
             # change temperature seems have no effect
             temperature=10.0 ,
             discrete=False ,
@@ -32,6 +35,7 @@ svpg = SVPG(nagents=nagents ,
 
 #svpg_rewards = np.ones((nagents, 1, nparams))
 #print(svpg_rewards)
+
 new_svpg_rewards = np.ones((nagents, 1, nparams))
 
 all_params=[]
@@ -41,26 +45,34 @@ print(current_paras, "------------current_paras intial")
 
 for i in range(SVPG_train_steps):
     if i < SVPG_train_steps:
+        new_svpg_rewards = np.zeros( (nagents ,1 ,nparams) )
         for t in range( svpg_rollout_length ):
             for x in range(nagents):
-                #print(new_svpg_rewards[x], "----new_svpg_rewards[x]")
-                diff = current_paras[x][t] - 30
-                #print(diff, "----diff")
                 # TODO: the reward logic still have problem:
                 #  if the reward is low, output this parameter more,
                 #  and next time increase the reward a little bit, because it "trained more on this parameter".
-                if -10 <= diff <= 10:
-                    #print("----here")
-                    new_svpg_rewards[x][0][0] += 100
+                # [[[31.98860063]
+                #   [10]]
+                #
+                #  [[14.18307286]
+                #    [13.19349111]]]
+                param = current_paras[x][t]
+                # if param <= 8 or param >= 50:
+                #     new_svpg_rewards[x][0][0] -= 100
+                if param >= 30:
+                    # reward is 100 at 40
+                    #            90 at 41 or 39 .... and so on
+                    #            80 at 42 or 38 .... and so on
+                    reward = abs(10 - abs(param - 40))*10
+                    new_svpg_rewards[x][0][0] += reward
                 else:
-                    #print("----else")
-                    new_svpg_rewards[x][0][0] += 0
+                    new_svpg_rewards[x][0][0] -= 200
 
         #new_svpg_rewards=np.array([[[0]], [[1]]])
-        #print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
+        print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
         svpg.train(simulator_rewards=new_svpg_rewards)
 
-        print(current_paras, "----------input paras")
+        #print(current_paras, "----------input paras")
         simulation_instances = svpg.step()
         new_paras = _rescale(simulation_instances)
         print(new_paras, "----------output new_paras")
@@ -70,10 +82,18 @@ for i in range(SVPG_train_steps):
         all_params.append(list(new_paras.flatten()))
 
     i += 1
+print(all_params, "-------before")
+all_params = all_params[-200:]
+print(all_params)
 
-print(all_params, "-------all_params")
 
-plt.plot(all_params, 'o')
+plot_params = reduce(operator.concat, all_params)
+
+plt.hist(plot_params, bins=50)
+xlims = [8, 50]
+plt.xlim(xlims[0], xlims[1])
+
+#plt.plot(all_params, 'o')
 plt.ylabel( 'SVPG output' )
 plt.xlabel( 'SVPG timestamps' )
 plt.title( 'SVPG output parameter changing' )

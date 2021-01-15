@@ -120,7 +120,7 @@ class SVPG:
         dist ,value = policy( state )
         prior_dist ,_ = prior_policy( state )
 
-        action = dist.sample()               
+        action = dist.sample()
 
         # log of the pdf/pmf evaluated at "action"
         policy.saved_log_probs.append(dist.log_prob(action))
@@ -187,10 +187,8 @@ class SVPG:
                 clipped_action = action * self.max_step_length # length = 0.05
                 # TODO: action is relative action, clipped by [0,1].
                 #  so we have a lot of 0/1 output. does this make sense?
-                # print(current_sim_params, "---current_sim_params")
-                print(clipped_action, "---------------------------------------------clipped_action")
                 next_params = np.clip(current_sim_params + clipped_action, 0, 1)
-                print(next_params, "--------------------------------------------------next_params")
+                #next_params = np.clip(np.array([clipped_action]), 0, 1)
                 # TODO: for non-ADR, should the svpg_horizon be 25?
                 if np.array_equal(next_params, current_sim_params) or self.timesteps[i] + 1 == self.svpg_horizon:
                     next_params = np.random.uniform(0, 1, (self.nparams,))
@@ -225,21 +223,16 @@ class SVPG:
 
             # Calculate entropy-augmented returns, advantages
             returns = self.compute_returns(next_value, particle_rewards, masks, self.particles[i].saved_klds)
-            #print(returns, "----------------returns")
 
             returns = torch.cat(returns).detach()
 
             # advantages = Q(S,a) - V(s): another version of Q-value with lower variance
             advantages = returns - self.values[i]
 
-
             # logprob * A = policy gradient (before backwards)
             # dist.log_prob(action) from the def select_action()
             for log_prob, advantage in zip(self.particles[i].saved_log_probs, advantages):
                 policy_grad_particle.append(log_prob * advantage.detach())
-                #print( log_prob ,"----------------log_prob" )
-
-            #print( policy_grad_particle ,"----------------policy_grad_particle" )
 
             # Compute value loss, update critic
             self.optimizers[i].zero_grad()
