@@ -29,13 +29,13 @@ SVPG_train_steps=500
 
 svpg = SVPG(nagents=nagents ,
             nparams=nparams ,
-            max_step_length=0.1,
+            max_step_length=0.05,
             svpg_rollout_length=svpg_rollout_length ,
             svpg_horizon=1000 ,
             # change temperature seems have no effect
             temperature=0.1 ,
             discrete=False ,
-            kld_coefficient=0.2 )
+            kld_coefficient=0.0 )
 
 #svpg_rewards = np.ones((nagents, 1, nparams))
 #print(svpg_rewards)
@@ -65,15 +65,15 @@ for i in range(SVPG_train_steps):
                 param = current_paras[x][t]
                 # if param <= 8 or param >= 50:
                 #     new_svpg_rewards[x][0][0] -= 100
-                if 30 <= param <= 40:
+                if param <= 20:
                     # reward is 100 at 40
                     #            90 at 41 or 39 .... and so on
                     #            80 at 42 or 38 .... and so on
                     #reward = abs(10 - abs(param - 10))*10
-                    reward = 500
+                    reward = 10
                     new_svpg_rewards[x][0][0] += reward
                 else:
-                    new_svpg_rewards[x][0][0] -= 200
+                    new_svpg_rewards[x][0][0] -= 20
 
         #new_svpg_rewards=np.array([[[0]], [[1]]])
         print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
@@ -94,10 +94,10 @@ for i in range(SVPG_train_steps):
         trace = dict( x=testing_epochs ,y=critic_loss ,mode="markers+lines" ,type='custom' ,
                       marker={'color': PLOT_COLOR ,'symbol': 104 ,'size': "5"} ,
                       text=["one" ,"two" ,"three"] ,name='1st Trace' )
-        layout = dict( title="MORL - Testing - Mean Reward " ,
-                       xaxis={'title': 'Epoch'} ,
-                       yaxis={'title': 'Mean Reward'} )
-        vis._send( {'data': [trace] ,'layout': layout ,'win': 'morl_testing_mean_reward_'} )
+        layout = dict( title="SVPG critic_loss " ,
+                       xaxis={'title': 'Timestamp'} ,
+                       yaxis={'title': 'critic_loss'} )
+        vis._send( {'data': [trace] ,'layout': layout ,'win': 'SVPG critic_loss'} )
 
     i += 1
 

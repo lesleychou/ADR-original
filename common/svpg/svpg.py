@@ -13,7 +13,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_tensor_type(torch.FloatTensor)
 eps = np.finfo(np.float32).eps.item()
 
-LEARNING_RATE = 3e-4
+LEARNING_RATE = 1e-3
 HIDDEN_DIMENSIONS = 100
 
 class SVPG:
