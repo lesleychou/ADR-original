@@ -6,9 +6,13 @@ from common.svpg.svpg import SVPG
 import matplotlib.pyplot as plt
 from functools import reduce
 import operator
+import visdom
 
+vis = visdom.Visdom()
+assert vis.check_connection()
 
 plt.rcParams.update( {'font.size': 14} )
+PLOT_COLOR = 'red'
 
 
 def _rescale( value):
@@ -21,17 +25,17 @@ def _rescale( value):
 nagents=2
 nparams=1
 svpg_rollout_length=2
-SVPG_train_steps=2000
+SVPG_train_steps=500
 
 svpg = SVPG(nagents=nagents ,
             nparams=nparams ,
-            max_step_length=0.05,
+            max_step_length=0.1,
             svpg_rollout_length=svpg_rollout_length ,
             svpg_horizon=1000 ,
             # change temperature seems have no effect
-            temperature=10.0 ,
+            temperature=0.1 ,
             discrete=False ,
-            kld_coefficient=0.0 )
+            kld_coefficient=0.2 )
 
 #svpg_rewards = np.ones((nagents, 1, nparams))
 #print(svpg_rewards)
@@ -42,6 +46,8 @@ all_params=[]
 current_paras = svpg.step()
 current_paras = np.ones((nagents,svpg.svpg_rollout_length,svpg.nparams)) * -1
 print(current_paras, "------------current_paras intial")
+testing_epochs = []
+critic_loss = []
 
 for i in range(SVPG_train_steps):
     if i < SVPG_train_steps:
@@ -59,18 +65,19 @@ for i in range(SVPG_train_steps):
                 param = current_paras[x][t]
                 # if param <= 8 or param >= 50:
                 #     new_svpg_rewards[x][0][0] -= 100
-                if param >= 30:
+                if 30 <= param <= 40:
                     # reward is 100 at 40
                     #            90 at 41 or 39 .... and so on
                     #            80 at 42 or 38 .... and so on
-                    reward = abs(10 - abs(param - 40))*10
+                    #reward = abs(10 - abs(param - 10))*10
+                    reward = 500
                     new_svpg_rewards[x][0][0] += reward
                 else:
                     new_svpg_rewards[x][0][0] -= 200
 
         #new_svpg_rewards=np.array([[[0]], [[1]]])
         print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
-        svpg.train(simulator_rewards=new_svpg_rewards)
+        critic_loss_step = svpg.train(simulator_rewards=new_svpg_rewards)
 
         #print(current_paras, "----------input paras")
         simulation_instances = svpg.step()
@@ -81,7 +88,19 @@ for i in range(SVPG_train_steps):
 
         all_params.append(list(new_paras.flatten()))
 
+        # Visdom logs:
+        testing_epochs.append(i)
+        critic_loss.append(critic_loss_step.tolist())
+        trace = dict( x=testing_epochs ,y=critic_loss ,mode="markers+lines" ,type='custom' ,
+                      marker={'color': PLOT_COLOR ,'symbol': 104 ,'size': "5"} ,
+                      text=["one" ,"two" ,"three"] ,name='1st Trace' )
+        layout = dict( title="MORL - Testing - Mean Reward " ,
+                       xaxis={'title': 'Epoch'} ,
+                       yaxis={'title': 'Mean Reward'} )
+        vis._send( {'data': [trace] ,'layout': layout ,'win': 'morl_testing_mean_reward_'} )
+
     i += 1
+
 print(all_params, "-------before")
 all_params = all_params[-200:]
 print(all_params)

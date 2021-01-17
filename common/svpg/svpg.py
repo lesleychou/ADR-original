@@ -101,16 +101,6 @@ class SVPG:
 
     def select_action(self, policy_idx, state):
         # TODO: How does this work???
-        # for i in range(10):
-        #     state = np.array( [[float(i/10)]] )
-        #     state = torch.from_numpy(state).float().unsqueeze(0).to(device)
-        #     policy = self.particles[policy_idx]
-        #     prior_policy = self.prior_particles[policy_idx]
-        #     dist, value = policy(state)
-        #     print(state, "-----state")
-        #     print(dist, "-------dist")
-        #     prior_dist, _ = prior_policy(state)
-        #     print(prior_dist, "-------prior-dist")
 
         state = torch.from_numpy( state ).float().unsqueeze( 0 ).to( device )
         policy = self.particles[policy_idx]
@@ -191,7 +181,8 @@ class SVPG:
                 #next_params = np.clip(np.array([clipped_action]), 0, 1)
                 # TODO: for non-ADR, should the svpg_horizon be 25?
                 if np.array_equal(next_params, current_sim_params) or self.timesteps[i] + 1 == self.svpg_horizon:
-                    next_params = np.random.uniform(0, 1, (self.nparams,))
+                #if self.timesteps[i] + 1 == self.svpg_horizon:
+                    #next_params = np.random.uniform(0, 1, (self.nparams,))
                     # TODO: why when "next_params==current_sim_params", masks is done?
                     self.masks[i][t] = 0 # done = True
                     self.timesteps[i] = 0
@@ -268,6 +259,8 @@ class SVPG:
             vector_to_parameters(grad_theta[i],
                  self.particles[i].parameters(), grad=True)
             self.optimizers[i].step()
+
+        return critic_loss
 
     def save(self, directory):
         for i in range(self.nagents):
