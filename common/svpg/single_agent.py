@@ -22,13 +22,6 @@ def _rescale( value):
     range_max = 50
     return range_min + (range_max - range_min) * value
 
-
-def temperature_decay_func(epoch, temperature_param):
-    # linear decay
-    temperature = temperature_param/epoch
-    return temperature
-
-
 nagents=2
 nparams=1
 svpg_rollout_length=2
@@ -37,40 +30,26 @@ temperature_param=1
 
 svpg = SVPG( nagents=nagents ,
              nparams=nparams ,
-             max_step_length=0.05 ,
+             max_step_length=0.1 ,
              svpg_rollout_length=svpg_rollout_length ,
              svpg_horizon=1000 ,
              # change temperature seems have no effect
              temperature=temperature_param ,
              discrete=False ,
-             kld_coefficient=0.1 )
+             kld_coefficient=0.01)
 #svpg_rewards = np.ones((nagents, 1, nparams))
 #print(svpg_rewards)
 
 new_svpg_rewards = np.ones((nagents, 1, nparams))
 
 all_params=[]
+rewards=[]
 testing_epochs = []
 critic_loss = []
 current_paras = svpg.step()
 current_paras = np.ones( (nagents, svpg_rollout_length, nparams) ) * -1
 
 for i in range(SVPG_train_steps):
-    if i >= 1 and i % 10 == 0:
-        temperature_decay = temperature_decay_func(i, temperature_param)
-        print(temperature_decay, "------decayed")
-        svpg = SVPG( nagents=nagents ,
-                     nparams=nparams ,
-                     max_step_length=0.05 ,
-                     svpg_rollout_length=svpg_rollout_length ,
-                     svpg_horizon=1000 ,
-                     # change temperature seems have no effect
-                     temperature=temperature_decay ,
-                     discrete=False ,
-                     kld_coefficient=0.1 )
-        current_paras = svpg.step()
-        print( current_paras ,"------------current_paras intial" )
-
     if i < SVPG_train_steps:
         new_svpg_rewards = np.zeros( (nagents ,1 ,nparams) )
         for t in range( svpg_rollout_length ):
@@ -86,19 +65,32 @@ for i in range(SVPG_train_steps):
                 param = current_paras[x][t]
                 # if param <= 8 or param >= 50:
                 #     new_svpg_rewards[x][0][0] -= 100
-                if 20<= param <= 30:
-                    # reward is 100 at 40
-                    #            90 at 41 or 39 .... and so on
-                    #            80 at 42 or 38 .... and so on
-                    #reward = abs(10 - abs(param - 10))*10
-                    reward = 10
-                    new_svpg_rewards[x][0][0] += reward
+                # if param > 11 and param < 17:
+                #     new_svpg_rewards[x][0][0] += 5
+                # elif param >= 50:
+                #     new_svpg_rewards[x][0][0] -= 50
+                # elif param <= 8 or param >= 50:
+                #     new_svpg_rewards[x][0][0] -= 10
+                # elif param <= 20:
+                #     # reward is 100 at 40
+                #     #            90 at 41 or 39 .... and so on
+                #     #            80 at 42 or 38 .... and so on
+                #     #reward = abs(10 - abs(param - 10))*10
+                #     new_svpg_rewards[x][0][0] += 2
+                # else:
+                #     new_svpg_rewards[x][0][0] += 0
+
+                if param >= 50:
+                    new_svpg_rewards[x][0][0] -= 50
+                elif param <= 8:
+                    new_svpg_rewards[x][0][0] -= 25
                 else:
-                    new_svpg_rewards[x][0][0] -= 20
+                    reward = abs( 25 - abs( param - 25 ) )
+                    new_svpg_rewards[x][0][0] += reward
 
         #new_svpg_rewards=np.array([[[0]], [[1]]])
         print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
-        critic_loss_step = svpg.train(simulator_rewards=new_svpg_rewards)
+        critic_loss_step = svpg.train(i, simulator_rewards=new_svpg_rewards)
 
         #print(current_paras, "----------input paras")
         simulation_instances = svpg.step()
@@ -119,6 +111,17 @@ for i in range(SVPG_train_steps):
                        xaxis={'title': 'Timestamp'} ,
                        yaxis={'title': 'critic_loss'} )
         vis._send( {'data': [trace] ,'layout': layout ,'win': 'SVPG critic_loss'} )
+
+        reward_all = new_svpg_rewards.reshape(new_svpg_rewards.shape[0], -1)
+        reward_mean = reward_all.mean(axis=0)
+        rewards.append(list(reward_mean)[0])
+        trace = dict( x=testing_epochs ,y=rewards ,mode="markers+lines" ,type='custom' ,
+                      marker={'color': PLOT_COLOR ,'symbol': 104 ,'size': "5"} ,
+                      text=["one" ,"two" ,"three"] ,name='1st Trace' )
+        layout = dict( title="SVPG rewards " ,
+                       xaxis={'title': 'Timestamp'} ,
+                       yaxis={'title': 'rewards'} )
+        vis._send( {'data': [trace] ,'layout': layout ,'win': 'SVPG rewards'} )
 
     i += 1
 

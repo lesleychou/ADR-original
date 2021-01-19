@@ -111,6 +111,9 @@ class SVPG:
         prior_dist ,_ = prior_policy( state )
 
         action = dist.sample()
+        print(dist, "------dist")
+        print(action, "------action")
+
 
         # log of the pdf/pmf evaluated at "action"
         policy.saved_log_probs.append(dist.log_prob(action))
@@ -195,7 +198,7 @@ class SVPG:
 
         return np.array(self.simulation_instances)
 
-    def train(self, simulator_rewards):
+    def train(self, epoch, simulator_rewards):
         """Train SVPG agent with rewards from rollouts
         """
         policy_grads = []
@@ -247,6 +250,9 @@ class SVPG:
         # calculating the kernel matrix and its gradients
         parameters = torch.cat(parameters)
         Kxx, dxKxx = self._Kxx_dxKxx(parameters)
+        # decay the temperature
+        if epoch >= 1 and epoch % 50 == 0:
+            self.temperature = self.temperature/50
         policy_grads = 1 / self.temperature * torch.cat(policy_grads)
 
         grad_logp = torch.mm(Kxx, policy_grads)
