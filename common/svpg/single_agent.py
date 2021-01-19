@@ -22,34 +22,55 @@ def _rescale( value):
     range_max = 50
     return range_min + (range_max - range_min) * value
 
+
+def temperature_decay_func(epoch, temperature_param):
+    # linear decay
+    temperature = temperature_param/epoch
+    return temperature
+
+
 nagents=2
 nparams=1
 svpg_rollout_length=2
 SVPG_train_steps=500
+temperature_param=1
 
-svpg = SVPG(nagents=nagents ,
-            nparams=nparams ,
-            max_step_length=0.05,
-            svpg_rollout_length=svpg_rollout_length ,
-            svpg_horizon=1000 ,
-            # change temperature seems have no effect
-            temperature=0.1 ,
-            discrete=False ,
-            kld_coefficient=0.0 )
-
+svpg = SVPG( nagents=nagents ,
+             nparams=nparams ,
+             max_step_length=0.05 ,
+             svpg_rollout_length=svpg_rollout_length ,
+             svpg_horizon=1000 ,
+             # change temperature seems have no effect
+             temperature=temperature_param ,
+             discrete=False ,
+             kld_coefficient=0.1 )
 #svpg_rewards = np.ones((nagents, 1, nparams))
 #print(svpg_rewards)
 
 new_svpg_rewards = np.ones((nagents, 1, nparams))
 
 all_params=[]
-current_paras = svpg.step()
-current_paras = np.ones((nagents,svpg.svpg_rollout_length,svpg.nparams)) * -1
-print(current_paras, "------------current_paras intial")
 testing_epochs = []
 critic_loss = []
+current_paras = svpg.step()
+current_paras = np.ones( (nagents, svpg_rollout_length, nparams) ) * -1
 
 for i in range(SVPG_train_steps):
+    if i >= 1 and i % 10 == 0:
+        temperature_decay = temperature_decay_func(i, temperature_param)
+        print(temperature_decay, "------decayed")
+        svpg = SVPG( nagents=nagents ,
+                     nparams=nparams ,
+                     max_step_length=0.05 ,
+                     svpg_rollout_length=svpg_rollout_length ,
+                     svpg_horizon=1000 ,
+                     # change temperature seems have no effect
+                     temperature=temperature_decay ,
+                     discrete=False ,
+                     kld_coefficient=0.1 )
+        current_paras = svpg.step()
+        print( current_paras ,"------------current_paras intial" )
+
     if i < SVPG_train_steps:
         new_svpg_rewards = np.zeros( (nagents ,1 ,nparams) )
         for t in range( svpg_rollout_length ):
@@ -65,7 +86,7 @@ for i in range(SVPG_train_steps):
                 param = current_paras[x][t]
                 # if param <= 8 or param >= 50:
                 #     new_svpg_rewards[x][0][0] -= 100
-                if param <= 20:
+                if 20<= param <= 30:
                     # reward is 100 at 40
                     #            90 at 41 or 39 .... and so on
                     #            80 at 42 or 38 .... and so on
