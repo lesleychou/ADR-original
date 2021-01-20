@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from functools import reduce
 import operator
 import visdom
+import torch
 
 vis = visdom.Visdom()
 assert vis.check_connection()
@@ -27,6 +28,9 @@ nparams=1
 svpg_rollout_length=2
 SVPG_train_steps=500
 temperature_param=1
+
+torch.manual_seed(101)
+np.random.seed(101)
 
 svpg = SVPG( nagents=nagents ,
              nparams=nparams ,
