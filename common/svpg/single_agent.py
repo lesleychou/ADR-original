@@ -85,11 +85,18 @@ for i in range(SVPG_train_steps):
                 #     new_svpg_rewards[x][0][0] += 0
 
                 if param >= 50:
-                    new_svpg_rewards[x][0][0] -= 50
+                    new_svpg_rewards[x][0][0] -= 100
                 elif param <= 8:
-                    new_svpg_rewards[x][0][0] -= 25
+                    new_svpg_rewards[x][0][0] -= 50
                 else:
-                    reward = abs( 25 - abs( param - 25 ) )
+                    # we want the distribution to be around here...
+                    target = 25
+                    reward = abs( target - abs( param - target ) )
+                    # max reward of 25
+                    max_reward = 25
+                    if reward > max_reward:
+                        reward = max_reward
+                
                     new_svpg_rewards[x][0][0] += reward
 
         #new_svpg_rewards=np.array([[[0]], [[1]]])
