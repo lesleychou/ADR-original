@@ -107,13 +107,12 @@ class SVPG:
         prior_policy = self.prior_particles[policy_idx]
         # state: input reward
         # value: quality value from critic
-        dist ,value = policy( state )
-        prior_dist ,_ = prior_policy( state )
+        dist, value = policy( state )
+        prior_dist, _ = prior_policy( state )
 
         action = dist.sample()
         print(dist, "------dist")
         print(action, "------action")
-
 
         # log of the pdf/pmf evaluated at "action"
         policy.saved_log_probs.append(dist.log_prob(action))
