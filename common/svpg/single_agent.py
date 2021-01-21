@@ -28,9 +28,9 @@ nparams=1
 svpg_rollout_length=2
 SVPG_train_steps=500
 temperature_param=1
-
-torch.manual_seed(101)
-np.random.seed(101)
+random_seed=101
+torch.manual_seed(random_seed)
+np.random.seed(random_seed)
 
 svpg = SVPG( nagents=nagents ,
              nparams=nparams ,
