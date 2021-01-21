@@ -25,10 +25,11 @@ def _rescale( value):
 
 nagents=2
 nparams=1
-svpg_rollout_length=2
+svpg_rollout_length=10
 SVPG_train_steps=500
 temperature_param=1
-random_seed=101
+# both seed = 101/102 worked well
+random_seed=102
 torch.manual_seed(random_seed)
 np.random.seed(random_seed)
 
@@ -84,20 +85,24 @@ for i in range(SVPG_train_steps):
                 # else:
                 #     new_svpg_rewards[x][0][0] += 0
 
-                if param >= 50:
-                    new_svpg_rewards[x][0][0] -= 100
-                elif param <= 8:
-                    new_svpg_rewards[x][0][0] -= 50
+                # if param >= 50:
+                #     new_svpg_rewards[x][0][0] -= 100
+                # elif param <= 8:
+                #     new_svpg_rewards[x][0][0] -= 50
+                # else:
+                #     # we want the distribution to be around here...
+                #     target = 10
+                #     reward = abs( target - abs( param - target ) )
+                #     # max reward of 25
+                #     max_reward = 50
+                #     if reward > max_reward:
+                #         reward = max_reward
+                #
+                #     new_svpg_rewards[x][0][0] += reward
+                if 10 <= param <= 20:
+                    new_svpg_rewards[x][0][0] += 100
                 else:
-                    # we want the distribution to be around here...
-                    target = 25
-                    reward = abs( target - abs( param - target ) )
-                    # max reward of 25
-                    max_reward = 25
-                    if reward > max_reward:
-                        reward = max_reward
-                
-                    new_svpg_rewards[x][0][0] += reward
+                    new_svpg_rewards[x][0][0] -= 200
 
         #new_svpg_rewards=np.array([[[0]], [[1]]])
         print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
