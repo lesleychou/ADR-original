@@ -99,8 +99,8 @@ for i in range(SVPG_train_steps):
                 #         reward = max_reward
                 #
                 #     new_svpg_rewards[x][0][0] += reward
-                if 10 <= param <= 20:
-                    new_svpg_rewards[x][0][0] += 100
+                if 20 <= param <= 30:
+                    new_svpg_rewards[x][0][0] += 200
                 else:
                     new_svpg_rewards[x][0][0] -= 200
 
