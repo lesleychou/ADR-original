@@ -26,10 +26,10 @@ def _rescale( value):
 nagents=2
 nparams=1
 svpg_rollout_length=10
-SVPG_train_steps=500
+SVPG_train_steps=300
 temperature_param=1
 # both seed = 101/102 worked well
-random_seed=102
+random_seed=111
 torch.manual_seed(random_seed)
 np.random.seed(random_seed)
 
@@ -99,7 +99,9 @@ for i in range(SVPG_train_steps):
                 #         reward = max_reward
                 #
                 #     new_svpg_rewards[x][0][0] += reward
-                if 20 <= param <= 30:
+                if param <= 8.5 or param >= 49.5:
+                    new_svpg_rewards[x][0][0] -= 2000
+                elif 20 <= param <= 30:
                     new_svpg_rewards[x][0][0] += 200
                 else:
                     new_svpg_rewards[x][0][0] -= 200
