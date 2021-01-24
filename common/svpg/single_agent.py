@@ -128,11 +128,15 @@ def train(seed):
                 #         reward = max_reward
                 #
                 #     new_svpg_rewards[x][0][0] += reward
-                if param <= 8.5 or param >= 49.5:
+                if param <= 8.5:
                     new_svpg_rewards[x][0][0] -= 2000
+                if param >= 49.5:
+                    new_svpg_rewards[x][0][0] -= 3000
                 elif 40 <= param <= 45:
-                    new_svpg_rewards[x][0][0] += 800
-                elif 35 <= param < 40 or 45 < param <= 49:
+                    new_svpg_rewards[x][0][0] += 1000
+                elif 45 < param <= 49:
+                    new_svpg_rewards[x][0][0] -= 500
+                elif 35 <= param < 40:
                     new_svpg_rewards[x][0][0] += 0
                 else:
                     new_svpg_rewards[x][0][0] -= 300
