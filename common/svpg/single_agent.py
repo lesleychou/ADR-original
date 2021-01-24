@@ -130,12 +130,12 @@ def train(seed):
                 #     new_svpg_rewards[x][0][0] += reward
                 if param <= 8.5 or param >= 49.5:
                     new_svpg_rewards[x][0][0] -= 2000
-                elif 20 <= param <= 25:
-                    new_svpg_rewards[x][0][0] += 200
-                elif 15 <= param < 20 or 25 < param <= 30:
+                elif 40 <= param <= 45:
+                    new_svpg_rewards[x][0][0] += 800
+                elif 35 <= param < 40 or 45 < param <= 49:
                     new_svpg_rewards[x][0][0] += 0
                 else:
-                    new_svpg_rewards[x][0][0] -= 200
+                    new_svpg_rewards[x][0][0] -= 300
                     #new_svpg_rewards=np.array([[[0]], [[1]]])
         #print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
         critic_loss_step = svpg.train(i, simulator_rewards=new_svpg_rewards)
