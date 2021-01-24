@@ -1,4 +1,6 @@
 import sys
+
+# FYI, this probably shouldn't have an absolute path to Lesley's machine.
 sys.path.append("/Users/lesley/ADR-original")
 
 import numpy as np
@@ -9,13 +11,16 @@ import operator
 import visdom
 import torch
 
+# Visdom must be running to run this script.
+# Run `visdom` from the command line to set it up.
 vis = visdom.Visdom()
 assert vis.check_connection()
 
-plt.rcParams.update( {'font.size': 14} )
+# Plotting configuration
+plt.rcParams.update({'font.size': 14})
 PLOT_COLOR = 'red'
 
-
+# Helper function
 def _rescale( value):
     """Rescales normalized value to be within range of env. dimension
     """
@@ -23,6 +28,9 @@ def _rescale( value):
     range_max = 50
     return range_min + (range_max - range_min) * value
 
+######################
+# Hyperparameter setup
+######################
 nagents=2
 nparams=1
 svpg_rollout_length=10
@@ -33,20 +41,22 @@ random_seed=111
 torch.manual_seed(random_seed)
 np.random.seed(random_seed)
 
-svpg = SVPG( nagents=nagents ,
-             nparams=nparams ,
-             max_step_length=0.1 ,
-             svpg_rollout_length=svpg_rollout_length ,
-             svpg_horizon=1000 ,
+
+######################
+# SVPG initialization
+######################
+svpg = SVPG( nagents=nagents,
+             nparams=nparams,
+             max_step_length=0.1,
+             svpg_rollout_length=svpg_rollout_length,
+             svpg_horizon=1000,
              # change temperature seems have no effect
-             temperature=temperature_param ,
-             discrete=False ,
+             temperature=temperature_param,
+             discrete=False,
              kld_coefficient=0.01)
 #svpg_rewards = np.ones((nagents, 1, nparams))
 #print(svpg_rewards)
-
 new_svpg_rewards = np.ones((nagents, 1, nparams))
-
 all_params=[]
 rewards=[]
 testing_epochs = []
@@ -54,7 +64,13 @@ critic_loss = []
 current_paras = svpg.step()
 current_paras = np.ones( (nagents, svpg_rollout_length, nparams) ) * -1
 
+######################
+# Training Loop
+######################
 for i in range(SVPG_train_steps):
+    # FYI, I think this if check doesn't do anything and should likely be removed for clarity.
+    # Since the code iterates through the range of training steps above, there's no need
+    # to actually check it is less than the training steps and then increment manually.
     if i < SVPG_train_steps:
         new_svpg_rewards = np.zeros( (nagents ,1 ,nparams) )
         for t in range( svpg_rollout_length ):
@@ -143,24 +159,21 @@ for i in range(SVPG_train_steps):
 
     i += 1
 
+
+######################
+# Report and Plotting
+######################
+    
 print(all_params, "-------before")
 all_params = all_params[-200:]
 print(all_params)
-
-
 plot_params = reduce(operator.concat, all_params)
 
 plt.hist(plot_params, bins=50)
 xlims = [8, 50]
 plt.xlim(xlims[0], xlims[1])
-
 #plt.plot(all_params, 'o')
 plt.ylabel( 'SVPG output' )
 plt.xlabel( 'SVPG timestamps' )
 plt.title( 'SVPG output parameter changing' )
 plt.show()
-
-
-
-
-
