@@ -250,8 +250,9 @@ class SVPG:
         parameters = torch.cat(parameters)
         Kxx, dxKxx = self._Kxx_dxKxx(parameters)
         # decay the temperature
-        if epoch >= 1 and epoch % 50 == 0:
-            self.temperature = self.temperature/50
+        # Lesley thinks turning off this temperature decay will help.
+        # if epoch >= 1 and epoch % 50 == 0:
+        #     self.temperature = self.temperature/50
         policy_grads = 1 / self.temperature * torch.cat(policy_grads)
 
         grad_logp = torch.mm(Kxx, policy_grads)

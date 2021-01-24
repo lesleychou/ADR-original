@@ -20,13 +20,26 @@ assert vis.check_connection()
 plt.rcParams.update({'font.size': 14})
 PLOT_COLOR = 'red'
 
-# Helper function
-def _rescale( value):
+# Helper functions
+def _rescale(value):
     """Rescales normalized value to be within range of env. dimension
     """
     range_min = 8
     range_max = 50
     return range_min + (range_max - range_min) * value
+
+def plot(params, filename):
+    """Plots and saves historgram of values.
+    """
+    print("Saving plot to: " + filename)
+    plt.hist(params, bins=50)
+    xlims = [8, 50]
+    plt.xlim(xlims[0], xlims[1])
+    plt.ylabel('SVPG output')
+    plt.xlabel('SVPG timestamps')
+    plt.title('SVPG output parameter changing')
+    plt.savefig(filename)
+    plt.close()
 
 ######################
 # Hyperparameter setup
@@ -34,44 +47,45 @@ def _rescale( value):
 nagents=2
 nparams=1
 svpg_rollout_length=10
-SVPG_train_steps=300
+SVPG_train_steps=500
 temperature_param=1
 # both seed = 101/102 worked well
-random_seed=111
-torch.manual_seed(random_seed)
-np.random.seed(random_seed)
+# random_seed=111
+# random_seeds = []
+# torch.manual_seed(random_seed)
+# np.random.seed(random_seed)
 
-
-######################
-# SVPG initialization
-######################
-svpg = SVPG( nagents=nagents,
-             nparams=nparams,
-             max_step_length=0.1,
-             svpg_rollout_length=svpg_rollout_length,
-             svpg_horizon=1000,
-             # change temperature seems have no effect
-             temperature=temperature_param,
-             discrete=False,
-             kld_coefficient=0.01)
-#svpg_rewards = np.ones((nagents, 1, nparams))
-#print(svpg_rewards)
-new_svpg_rewards = np.ones((nagents, 1, nparams))
-all_params=[]
-rewards=[]
-testing_epochs = []
-critic_loss = []
-current_paras = svpg.step()
-current_paras = np.ones( (nagents, svpg_rollout_length, nparams) ) * -1
 
 ######################
 # Training Loop
 ######################
-for i in range(SVPG_train_steps):
-    # FYI, I think this if check doesn't do anything and should likely be removed for clarity.
-    # Since the code iterates through the range of training steps above, there's no need
-    # to actually check it is less than the training steps and then increment manually.
-    if i < SVPG_train_steps:
+def train(seed):
+    ######################
+    # SVPG initialization
+    ######################
+    svpg = SVPG( nagents=nagents,
+                 nparams=nparams,
+                 max_step_length=0.1,
+                 svpg_rollout_length=svpg_rollout_length,
+                 svpg_horizon=1000,
+                 # change temperature seems have no effect
+                 temperature=temperature_param,
+                 discrete=False,
+                 kld_coefficient=0.01)
+    #svpg_rewards = np.ones((nagents, 1, nparams))
+    #print(svpg_rewards)
+    new_svpg_rewards = np.ones((nagents, 1, nparams))
+    all_params=[]
+    rewards=[]
+    testing_epochs = []
+    critic_loss = []
+    current_paras = svpg.step()
+    current_paras = np.ones( (nagents, svpg_rollout_length, nparams) ) * -1
+
+    ####################
+    # Main loop
+    ####################    
+    for i in range(SVPG_train_steps):
         new_svpg_rewards = np.zeros( (nagents ,1 ,nparams) )
         for t in range( svpg_rollout_length ):
             for x in range(nagents):
@@ -100,7 +114,6 @@ for i in range(SVPG_train_steps):
                 #     new_svpg_rewards[x][0][0] += 2
                 # else:
                 #     new_svpg_rewards[x][0][0] += 0
-
                 # if param >= 50:
                 #     new_svpg_rewards[x][0][0] -= 100
                 # elif param <= 8:
@@ -121,15 +134,14 @@ for i in range(SVPG_train_steps):
                     new_svpg_rewards[x][0][0] += 200
                 else:
                     new_svpg_rewards[x][0][0] -= 200
-
-        #new_svpg_rewards=np.array([[[0]], [[1]]])
-        print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
+                    #new_svpg_rewards=np.array([[[0]], [[1]]])
+        #print(new_svpg_rewards, "----------new_svpg_rewards", '\n')
         critic_loss_step = svpg.train(i, simulator_rewards=new_svpg_rewards)
 
         #print(current_paras, "----------input paras")
         simulation_instances = svpg.step()
         new_paras = _rescale(simulation_instances)
-        print(new_paras, "----------output new_paras")
+        #print(new_paras, "----------output new_paras")
         current_paras = new_paras
         new_svpg_rewards = new_svpg_rewards
 
@@ -141,10 +153,11 @@ for i in range(SVPG_train_steps):
         trace = dict( x=testing_epochs ,y=critic_loss ,mode="markers+lines" ,type='custom' ,
                       marker={'color': PLOT_COLOR ,'symbol': 104 ,'size': "5"} ,
                       text=["one" ,"two" ,"three"] ,name='1st Trace' )
-        layout = dict( title="SVPG critic_loss " ,
+        window = "SVPG critic_loss " + str(seed)
+        layout = dict( title=window,
                        xaxis={'title': 'Timestamp'} ,
                        yaxis={'title': 'critic_loss'} )
-        vis._send( {'data': [trace] ,'layout': layout ,'win': 'SVPG critic_loss'} )
+        vis._send( {'data': [trace] ,'layout': layout ,'win': window} )
 
         reward_all = new_svpg_rewards.reshape(new_svpg_rewards.shape[0], -1)
         reward_mean = reward_all.mean(axis=0)
@@ -152,28 +165,30 @@ for i in range(SVPG_train_steps):
         trace = dict( x=testing_epochs ,y=rewards ,mode="markers+lines" ,type='custom' ,
                       marker={'color': PLOT_COLOR ,'symbol': 104 ,'size': "5"} ,
                       text=["one" ,"two" ,"three"] ,name='1st Trace' )
-        layout = dict( title="SVPG rewards " ,
+        window = "SVPG rewards " + str(seed)        
+        layout = dict( title=window,
                        xaxis={'title': 'Timestamp'} ,
                        yaxis={'title': 'rewards'} )
-        vis._send( {'data': [trace] ,'layout': layout ,'win': 'SVPG rewards'} )
+        vis._send( {'data': [trace] ,'layout': layout ,'win': window} )
 
-    i += 1
+    ######################
+    # Report and Plotting
+    ######################
+    #print(all_params, "-------before")
+    all_params = all_params[-200:]
+    #print(all_params)
+    plot_params = reduce(operator.concat, all_params)
+    plot_filename = 'results/' + str(seed) + '.png'
+    plot(plot_params, plot_filename)
 
 
 ######################
-# Report and Plotting
+# MAIN
 ######################
-    
-print(all_params, "-------before")
-all_params = all_params[-200:]
-print(all_params)
-plot_params = reduce(operator.concat, all_params)
 
-plt.hist(plot_params, bins=50)
-xlims = [8, 50]
-plt.xlim(xlims[0], xlims[1])
-#plt.plot(all_params, 'o')
-plt.ylabel( 'SVPG output' )
-plt.xlabel( 'SVPG timestamps' )
-plt.title( 'SVPG output parameter changing' )
-plt.show()
+# Run on a range of random seeds for robustness.
+for i in range(102, 112):
+    print("Running on RANDOM SEED: ", str(i))
+    torch.manual_seed(i)
+    np.random.seed(i)
+    train(i)
