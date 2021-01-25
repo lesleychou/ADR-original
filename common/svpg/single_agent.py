@@ -135,8 +135,8 @@ def train(seed):
                 #     new_svpg_rewards[x][0][0] -= 1000
                 # # elif param >= 460:
                 # #     new_svpg_rewards[x][0][0] -= 500
-                elif 400 <= param <= 490:
-                    new_svpg_rewards[x][0][0] += 500
+                elif 300 <= param <= 400:
+                    new_svpg_rewards[x][0][0] += 200
                 else:
                     new_svpg_rewards[x][0][0] -= 200
                     #new_svpg_rewards=np.array([[[0]], [[1]]])
