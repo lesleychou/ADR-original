@@ -25,20 +25,20 @@ def _rescale(value):
     """Rescales normalized value to be within range of env. dimension
     """
     range_min = 8
-    range_max = 50
+    range_max = 500
     return range_min + (range_max - range_min) * value
 
 def plot(params, filename):
     """Plots and saves historgram of values.
     """
     print("Saving plot to: " + filename)
-    plt.hist(params, bins=50)
-    xlims = [8, 50]
+    plt.hist(params, bins=500)
+    xlims = [8, 500]
     plt.xlim(xlims[0], xlims[1])
-    plt.ylabel('SVPG output')
-    plt.xlabel('SVPG timestamps')
-    plt.title('SVPG output parameter changing')
-    plt.savefig(filename)
+    plt.ylabel('SVPG output count')
+    plt.xlabel('sampled range')
+    plt.title('SVPG sampled dist')
+    plt.savefig(filename, dpi=100)
     plt.close()
 
 ######################
@@ -128,9 +128,9 @@ def train(seed):
                 #         reward = max_reward
                 #
                 #     new_svpg_rewards[x][0][0] += reward
-                if param <= 8.5 or param >= 49.5:
+                if param <= 8.5 or param >= 495:
                     new_svpg_rewards[x][0][0] -= 2000
-                elif 20 <= param <= 30:
+                elif 100 <= param <= 200:
                     new_svpg_rewards[x][0][0] += 200
                 else:
                     new_svpg_rewards[x][0][0] -= 200

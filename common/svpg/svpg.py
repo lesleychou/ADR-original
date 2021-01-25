@@ -183,7 +183,6 @@ class SVPG:
                 #next_params = np.clip(np.array([clipped_action]), 0, 1)
                 # TODO: for non-ADR, should the svpg_horizon be 25?
                 if np.array_equal(next_params, current_sim_params) or self.timesteps[i] + 1 == self.svpg_horizon:
-                #if self.timesteps[i] + 1 == self.svpg_horizon:
                     next_params = np.random.uniform(0, 1, (self.nparams,))
                     # TODO: why when "next_params==current_sim_params", masks is done?
                     self.masks[i][t] = 0 # done = True
