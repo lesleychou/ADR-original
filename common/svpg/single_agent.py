@@ -32,7 +32,7 @@ def plot(params, filename):
     """Plots and saves historgram of values.
     """
     print("Saving plot to: " + filename)
-    plt.hist(params, bins=500)
+    plt.hist(params, bins=492)
     xlims = [8, 500]
     plt.xlim(xlims[0], xlims[1])
     plt.ylabel('SVPG output count')
@@ -47,7 +47,7 @@ def plot(params, filename):
 nagents=2
 nparams=1
 svpg_rollout_length=10
-SVPG_train_steps=500
+SVPG_train_steps=1000
 temperature_param=1
 # both seed = 101/102 worked well
 # random_seed=111
@@ -128,10 +128,15 @@ def train(seed):
                 #         reward = max_reward
                 #
                 #     new_svpg_rewards[x][0][0] += reward
-                if param <= 8.5 or param >= 495:
+                # Trained for 1000 epoch, plot the last 200
+                if param <= 8.5 or param >= 498:
                     new_svpg_rewards[x][0][0] -= 2000
-                elif 100 <= param <= 200:
-                    new_svpg_rewards[x][0][0] += 200
+                # elif param >= 480:
+                #     new_svpg_rewards[x][0][0] -= 1000
+                # # elif param >= 460:
+                # #     new_svpg_rewards[x][0][0] -= 500
+                elif 400 <= param <= 490:
+                    new_svpg_rewards[x][0][0] += 500
                 else:
                     new_svpg_rewards[x][0][0] -= 200
                     #new_svpg_rewards=np.array([[[0]], [[1]]])
