@@ -49,6 +49,8 @@ nparams=1
 svpg_rollout_length=10
 SVPG_train_steps=500
 temperature_param=0.1
+model_saved_directory = '/Users/lesley/ADR-original/results/saved_model_150'
+
 # both seed = 101/102 worked well
 # random_seed=111
 # random_seeds = []
@@ -72,6 +74,7 @@ def train(seed):
                  temperature=temperature_param,
                  discrete=False,
                  kld_coefficient=0.01,
+                 model_saved_dir=model_saved_directory,
                  load=True)
     #svpg_rewards = np.ones((nagents, 1, nparams))
     #print(svpg_rewards)
@@ -106,7 +109,7 @@ def train(seed):
                 #     new_svpg_rewards[x][0][0] -= 1000
                 # # elif param >= 460:
                 # #     new_svpg_rewards[x][0][0] -= 500
-                elif 100 <= param <= 200:
+                elif 200 <= param <= 300:
                     new_svpg_rewards[x][0][0] += 200
                 else:
                     new_svpg_rewards[x][0][0] -= 200
@@ -187,7 +190,7 @@ def train(seed):
 ######################
 
 # Run on a range of random seeds for robustness.
-for i in range(102, 103):
+for i in range(104, 105):
     print("Running on RANDOM SEED: ", str(i))
     torch.manual_seed(i)
     np.random.seed(i)

@@ -22,7 +22,7 @@ class SVPG:
     direction to move in (Discrete - for 1D/2D) or a delta across all parameter (Continuous)
     """
     def __init__(self, nagents, nparams, max_step_length, svpg_rollout_length, svpg_horizon,
-                 temperature, discrete, kld_coefficient, load=False):
+                 temperature, discrete, kld_coefficient, model_saved_dir, load=False):
         self.particles = []
         self.prior_particles = []
         self.optimizers = []
@@ -40,6 +40,8 @@ class SVPG:
 
         self.last_states = np.random.uniform(0, 1, (self.nagents, self.nparams))
         self.timesteps = np.zeros(self.nagents)
+
+        self.model_saved_dir = model_saved_dir
 
         for i in range(self.nagents):
             # Initialize each of the individual particles
@@ -59,10 +61,10 @@ class SVPG:
             self.prior_particles.append(prior_policy)
             self.optimizers.append(optimizer)
 
+        # if load is True, reload the trained particle model
         if load:
-            directory = '/Users/lesley/ADR-original/results/saved_model'
-            self.load( directory )
-            self.load_prior_particles(directory)
+            self.load(self.model_saved_dir)
+            self.load_prior_particles(self.model_saved_dir)
 
 
     def _Kxx_dxKxx(self, X):
@@ -271,18 +273,20 @@ class SVPG:
             vector_to_parameters(grad_theta[i],
                  self.particles[i].parameters(), grad=True)
             self.optimizers[i].step()
-        # directory = '/Users/lesley/ADR-original/results/saved_model'
-        # self.save(directory)
+
+        # save the latest particle model
+        #self.save(self.model_saved_dir)
 
         return critic_loss
 
     def save(self, directory):
+        print("####### save model here")
         for i in range(self.nagents):
             torch.save(self.particles[i].state_dict(), '{}/particle_{}.pth'.format(directory, i))
             torch.save(self.particles[i].critic.state_dict(), '{}/particle_critic{}.pth'.format(directory, i))
 
     def load(self, directory):
-        print('##########')
+        print('########## load here')
         for i in range(self.nagents):
             prior = torch.load('{}/particle_{}.pth'.format(directory, i))
             # particle = self.particles[i].state_dict()
