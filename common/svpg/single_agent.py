@@ -2,7 +2,7 @@ import sys
 
 # FYI, this probably shouldn't have an absolute path to Lesley's machine.
 sys.path.append("/Users/lesley/ADR-original")
-
+import os
 import numpy as np
 from common.svpg.svpg import SVPG
 import matplotlib.pyplot as plt
@@ -71,7 +71,8 @@ def train(seed):
                  # change temperature seems have no effect
                  temperature=temperature_param,
                  discrete=False,
-                 kld_coefficient=0.01)
+                 kld_coefficient=0.01,
+                 load=True)
     #svpg_rewards = np.ones((nagents, 1, nparams))
     #print(svpg_rewards)
     new_svpg_rewards = np.ones((nagents, 1, nparams))
@@ -120,6 +121,12 @@ def train(seed):
         current_paras = new_paras
         new_svpg_rewards = new_svpg_rewards
 
+        log_param= list(new_paras.flatten())
+        RLMPC_LOG = '/Users/lesley/ADR-original/results/distlog'
+        dist_path = os.path.join( RLMPC_LOG ,'param' )
+        dist_file = open( dist_path ,'a' ,1 )
+        dist_file.write( str( log_param ) + '\n' )
+
         all_params.append(list(new_paras.flatten()))
 
         # Visdom logs:
@@ -150,11 +157,29 @@ def train(seed):
     # Report and Plotting
     ######################
     #print(all_params, "-------before")
-    all_params = all_params[-200:]
-    #print(all_params)
-    plot_params = reduce(operator.concat, all_params)
-    plot_filename = 'results/' + str(seed) + '.png'
-    plot(plot_params, plot_filename)
+    all_params = np.array(all_params)
+
+    y1 = all_params[: ,0:10]
+    y2 = all_params[: ,10:20]
+
+    line1 = np.reshape( y1 ,[1 ,-1] ).squeeze()
+    print( line1 )
+    line2 = np.reshape( y2 ,[1 ,-1] ).squeeze()
+    print( line2 )
+    # plot_params = reduce(operator.concat, all_params)
+    # plot_filename = 'results/' + str(seed) + '.png'
+    # plot(plot_params, plot_filename)
+
+    # cmap = plt.cm.jet
+    #
+    # for i ,y in enumerate( line1 ):
+    #     plt.plot( y ,color=cmap( i / float( 10 ) ), label='particle 1')
+
+    plt.plot(line1, color='blue')
+    plt.plot(line2, color='red')
+    plt.legend()
+
+    plt.show()
 
 
 ######################
@@ -162,7 +187,7 @@ def train(seed):
 ######################
 
 # Run on a range of random seeds for robustness.
-for i in range(102, 106):
+for i in range(102, 103):
     print("Running on RANDOM SEED: ", str(i))
     torch.manual_seed(i)
     np.random.seed(i)

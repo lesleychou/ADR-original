@@ -21,7 +21,8 @@ class SVPG:
     Input is the current randomization settings, and output is either a 
     direction to move in (Discrete - for 1D/2D) or a delta across all parameter (Continuous)
     """
-    def __init__(self, nagents, nparams, max_step_length, svpg_rollout_length, svpg_horizon, temperature, discrete, kld_coefficient):
+    def __init__(self, nagents, nparams, max_step_length, svpg_rollout_length, svpg_horizon,
+                 temperature, discrete, kld_coefficient, load=False):
         self.particles = []
         self.prior_particles = []
         self.optimizers = []
@@ -57,6 +58,12 @@ class SVPG:
             self.particles.append(policy)
             self.prior_particles.append(prior_policy)
             self.optimizers.append(optimizer)
+
+        if load:
+            directory = '/Users/lesley/ADR-original/results/saved_model'
+            self.load( directory )
+            self.load_prior_particles(directory)
+
 
     def _Kxx_dxKxx(self, X):
         """
@@ -264,6 +271,8 @@ class SVPG:
             vector_to_parameters(grad_theta[i],
                  self.particles[i].parameters(), grad=True)
             self.optimizers[i].step()
+        # directory = '/Users/lesley/ADR-original/results/saved_model'
+        # self.save(directory)
 
         return critic_loss
 
@@ -273,19 +282,22 @@ class SVPG:
             torch.save(self.particles[i].critic.state_dict(), '{}/particle_critic{}.pth'.format(directory, i))
 
     def load(self, directory):
-        return # TODO: Does this solve the value function issue?
+        print('##########')
         for i in range(self.nagents):
             prior = torch.load('{}/particle_{}.pth'.format(directory, i))
-            particle = self.particles[i].state_dict()
+            # particle = self.particles[i].state_dict()
             actor = {k: v for k, v in prior.items() if k.find('critic') == -1}
-
             # Only load the actor!
             self.particles[i].load_state_dict(actor, strict=False)
+        #return self.particles
+        # TODO: Does this solve the value function issue?
 
     def load_prior_particles(self, directory):
         for i in range(self.nagents):
             self.prior_particles[i].load_state_dict(torch.load('{}/particle_{}.pth'.format(directory, i), map_location=device))
             self.prior_particles[i].freeze()
+        #return self.prior_particles
+
 
     def _process_action(self, action):
         """Transform policy output into environment-action
