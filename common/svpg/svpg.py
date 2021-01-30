@@ -58,16 +58,6 @@ class SVPG:
             self.prior_particles.append(prior_policy)
             self.optimizers.append(optimizer)
 
-    def _squared_dist(self, X):
-        # Compute squared distance matrix using torch.pdist
-        dists = torch.pdist(X)
-        inds_l, inds_r = np.triu_indices(X.shape[-2], 1)
-        res = torch.zeros(*X.shape[:-2], X.shape[-2], X.shape[-2], dtype=X.dtype, device=X.device)
-        res[..., inds_l, inds_r] = dists
-        res[..., inds_r, inds_l] = dists
-
-        return res
-
     def _Kxx_dxKxx(self, X):
         """
         Computes covariance matrix K(X,X) and its gradient w.r.t. X
@@ -111,8 +101,18 @@ class SVPG:
         prior_dist, _ = prior_policy( state )
 
         action = dist.sample()
-        print(dist, "------dist")
-        print(action, "------action")
+        RLMPC_LOG = '/Users/lesley/ADR-original/results/distlog'
+        dist_path = os.path.join( RLMPC_LOG ,'dist' )
+        dist_file = open( dist_path ,'a' ,1 )
+
+        action_path = os.path.join( RLMPC_LOG ,'action' )
+        action_file = open( action_path ,'a' ,1 )
+
+        dist_item=dist.mean.detach().item()
+        dist_file.write( str( dist_item ) + '\n' )
+
+        action_item = action.item()
+        action_file.write( str( action_item ) + '\n' )
 
         # log of the pdf/pmf evaluated at "action"
         policy.saved_log_probs.append(dist.log_prob(action))

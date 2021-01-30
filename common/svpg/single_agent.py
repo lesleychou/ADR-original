@@ -47,8 +47,8 @@ def plot(params, filename):
 nagents=2
 nparams=1
 svpg_rollout_length=10
-SVPG_train_steps=1000
-temperature_param=1
+SVPG_train_steps=500
+temperature_param=0.1
 # both seed = 101/102 worked well
 # random_seed=111
 # random_seeds = []
@@ -65,7 +65,7 @@ def train(seed):
     ######################
     svpg = SVPG( nagents=nagents,
                  nparams=nparams,
-                 max_step_length=0.1,
+                 max_step_length=0.04,
                  svpg_rollout_length=svpg_rollout_length,
                  svpg_horizon=1000,
                  # change temperature seems have no effect
@@ -98,44 +98,14 @@ def train(seed):
                 #  [[14.18307286]
                 #    [13.19349111]]]
                 param = current_paras[x][t]
-                # if param <= 8 or param >= 50:
-                #     new_svpg_rewards[x][0][0] -= 100
-                # if param > 11 and param < 17:
-                #     new_svpg_rewards[x][0][0] += 5
-                # elif param >= 50:
-                #     new_svpg_rewards[x][0][0] -= 50
-                # elif param <= 8 or param >= 50:
-                #     new_svpg_rewards[x][0][0] -= 10
-                # elif param <= 20:
-                #     # reward is 100 at 40
-                #     #            90 at 41 or 39 .... and so on
-                #     #            80 at 42 or 38 .... and so on
-                #     #reward = abs(10 - abs(param - 10))*10
-                #     new_svpg_rewards[x][0][0] += 2
-                # else:
-                #     new_svpg_rewards[x][0][0] += 0
-                # if param >= 50:
-                #     new_svpg_rewards[x][0][0] -= 100
-                # elif param <= 8:
-                #     new_svpg_rewards[x][0][0] -= 50
-                # else:
-                #     # we want the distribution to be around here...
-                #     target = 10
-                #     reward = abs( target - abs( param - target ) )
-                #     # max reward of 25
-                #     max_reward = 50
-                #     if reward > max_reward:
-                #         reward = max_reward
-                #
-                #     new_svpg_rewards[x][0][0] += reward
                 # Trained for 1000 epoch, plot the last 200
-                if param <= 8.5 or param >= 498:
+                if param <= 8.5 or param >= 499.5:
                     new_svpg_rewards[x][0][0] -= 2000
                 # elif param >= 480:
                 #     new_svpg_rewards[x][0][0] -= 1000
                 # # elif param >= 460:
                 # #     new_svpg_rewards[x][0][0] -= 500
-                elif 300 <= param <= 400:
+                elif 100 <= param <= 200:
                     new_svpg_rewards[x][0][0] += 200
                 else:
                     new_svpg_rewards[x][0][0] -= 200
@@ -146,7 +116,7 @@ def train(seed):
         #print(current_paras, "----------input paras")
         simulation_instances = svpg.step()
         new_paras = _rescale(simulation_instances)
-        #print(new_paras, "----------output new_paras")
+        print(new_paras, "----------output new_paras")
         current_paras = new_paras
         new_svpg_rewards = new_svpg_rewards
 
@@ -192,7 +162,7 @@ def train(seed):
 ######################
 
 # Run on a range of random seeds for robustness.
-for i in range(102, 112):
+for i in range(102, 106):
     print("Running on RANDOM SEED: ", str(i))
     torch.manual_seed(i)
     np.random.seed(i)
