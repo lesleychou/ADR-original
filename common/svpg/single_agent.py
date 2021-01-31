@@ -75,7 +75,7 @@ def train(seed):
                  discrete=False,
                  kld_coefficient=0.01,
                  model_saved_dir=model_saved_directory,
-                 load=True)
+                 load=False)
     #svpg_rewards = np.ones((nagents, 1, nparams))
     #print(svpg_rewards)
     new_svpg_rewards = np.ones((nagents, 1, nparams))
